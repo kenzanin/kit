@@ -75,6 +75,22 @@ func compileLua(path string) (initFn func(API), closeFn func(), err error) {
 		L.Push(luaJSONDecode(L, h.b.env()))
 		return 1
 	}))
+	L.SetField(kit, "json", L.NewFunction(func(L *lua.LState) int {
+		switch L.GetTop() {
+		case 0:
+			L.RaiseError("kit.json expects a string or table")
+		case 1:
+			switch v := L.CheckAny(1).(type) {
+			case lua.LString: // decode JSON -> Lua value
+				L.Push(luaJSONDecode(L, string(v)))
+			default: // encode Lua value -> JSON
+				L.Push(lua.LString(luaJSONEncode(v)))
+			}
+		default:
+			L.RaiseError("kit.json takes one argument")
+		}
+		return 1
+	}))
 	L.SetGlobal("kit", kit)
 
 	if err := L.DoFile(path); err != nil {

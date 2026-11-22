@@ -2,6 +2,7 @@ package extensions
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 )
@@ -98,6 +99,28 @@ func TestNativeExtension_Wasm(t *testing.T) {
 	out, err := ext.Commands[0].Execute("x", Context{})
 	if err != nil || out != "pong" {
 		t.Fatalf("ping = %q, %v; want pong, nil", out, err)
+	}
+}
+
+// TestNativeExtension_RtkTool: the examples rtk.lua wrapper — full pipe
+// Lua tool -> io.popen -> rtk binary. Skipped where rtk is not installed.
+func TestNativeExtension_RtkTool(t *testing.T) {
+	if _, err := exec.LookPath("rtk"); err != nil {
+		t.Skip("rtk not installed")
+	}
+	ext, err := loadSingleExtension("../../examples/extensions/rtk.lua")
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if len(ext.Tools) != 1 || ext.Tools[0].Name != "rtk" {
+		t.Fatalf("tools = %#v", ext.Tools)
+	}
+	out, err := ext.Tools[0].Execute(`{"args":"git status -s` + `"}`)
+	if err != nil {
+		t.Fatalf("rtk execute: %v", err)
+	}
+	if out == "" {
+		t.Fatal("rtk returned empty output")
 	}
 }
 
