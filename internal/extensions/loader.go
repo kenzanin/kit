@@ -454,9 +454,11 @@ func loadSingleExtension(path string) (*LoadedExtension, error) {
 func compileExtension(path string) (func(API), error) {
 	switch {
 	case strings.HasSuffix(path, ".lua"):
-		return compileNative(path, newLuaHost)
+		initFn, _, err := compileLua(path)
+		return initFn, err
 	case strings.HasSuffix(path, ".wasm"):
-		return compileNative(path, newWasmHost)
+		initFn, _, err := compileWasm(path)
+		return initFn, err
 	}
 
 	// Create a fresh interpreter. Yaegi runs extensions in restricted mode,

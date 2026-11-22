@@ -1,16 +1,19 @@
-;; echo.wat — minimal Kit native extension used by nativeext_test.go and
-;; examples/extensions/ping.wasm. Rebuild with: wat2wasm echo.wasm -o echo.wasm
-;;
-;; ABI (see ext_wasm.go): kit_handle(evt,en,pay,payn) -> ptr, kit_result_len.
-;; Responses are static, selected by event-name length:
-;;   describe(8) -> manifest, tool_call(9) -> block result, command:ping(12) -> pong
+;; echo.wat — minimal Kit native wasm extension (ABI: see wasmhost.go).
+;; Rebuild: wat2wasm echo.wat -o echo.wasm
+;; kit_init registers a tool_call handler (id 1) and /ping (id 2) via imports;
+;; kit_dispatch answers by id with static JSON/text.
 (module
+  (import "kit" "on" (func $on (param i32 i32 i64)))
+  (import "kit" "register_command" (func $regcmd (param i32 i32 i64)))
   (memory (export "memory") 1)
-  (global $p (mut i32) (i32.const 4096))
+  (global $p (mut i32) (i32.const 8192))
   (global $rlen (mut i32) (i32.const 0))
-  (data (i32.const 256) "{\"commands\":[{\"name\":\"ping\",\"description\":\"wasm ping\"}],\"events\":[\"agent_start\",\"tool_call\"]}")
+
+  (data (i32.const 256) "{\"name\":\"ping\",\"description\":\"wasm ping\"}")
+  (data (i32.const 384) "tool_call")
   (data (i32.const 512) "{\"Block\":true,\"Reason\":\"blocked by wasm\"}")
   (data (i32.const 768) "pong")
+  (data (i32.const 896) "agent_start")
 
   (func $ret (param $ptr i32) (param $n i32) (result i32)
     local.get $n
@@ -30,20 +33,15 @@
   (func (export "kit_result_len") (result i32)
     global.get $rlen)
 
-  (func (export "kit_handle") (param $e i32) (param $en i32) (param $q i32) (param $qn i32) (result i32)
-    local.get $en i32.const 8 i32.eq
-    if (result i32)
-      i32.const 256 i32.const 93 call $ret
-    else
-      local.get $en i32.const 9 i32.eq
-      if (result i32)
-        i32.const 512 i32.const 41 call $ret
-      else
-        local.get $en i32.const 12 i32.eq
-        if (result i32)
-          i32.const 768 i32.const 4 call $ret
-        else
-          i32.const 0 i32.const 0 call $ret
-        end
-      end
-    end))
+  (func (export "kit_init")
+    (call $on (i32.const 384) (i32.const 9) (i64.const 1))
+    (call $regcmd (i32.const 256) (i32.const 41) (i64.const 2))
+    (call $on (i32.const 896) (i32.const 11) (i64.const 3)))
+
+  (func (export "kit_dispatch") (param $id i64) (param $ptr i32) (param $n i32) (result i32)
+    (if (i64.eq (local.get $id) (i64.const 1))
+      (then (return (call $ret (i32.const 512) (i32.const 41)))))
+    (if (i64.eq (local.get $id) (i64.const 2))
+      (then (return (call $ret (i32.const 768) (i32.const 4)))))
+    (i32.const 0))
+)

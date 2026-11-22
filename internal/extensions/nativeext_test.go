@@ -7,23 +7,29 @@ import (
 )
 
 // TestNativeExtension_Lua loads a Lua extension and checks the whole pipe:
-// describe probe -> registered handlers -> result JSON round trip -> command.
+// Init(api) -> registered handlers -> result JSON round trip -> command.
 func TestNativeExtension_Lua(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "guard.lua")
-	src := `function kit_handle(event, payload)
-  if event == "describe" then
-    return '{"commands":[{"name":"hi","description":"greets"}],"events":["agent_start","tool_call"]}'
-  end
-  if event == "command:hi" then
-    return "hi " .. payload
-  end
-  if event == "tool_call" and payload:find("shell") then
-    return '{"Block":true,"Reason":"no shell for you"}'
-  end
-  kit.log("event " .. event)
-  return ""
-end`
+	src := `
+function Init(api)
+  api.on("agent_start", function(ev) end)
+  api.on("tool_call", function(ev)
+    if ev.ToolName == "shell" then
+      return { Block = true, Reason = "no shell for you" }
+    end
+    return nil
+  end)
+  api.register_tool{
+    name = "greeter", description = "greets",
+    execute = function(input) return "tool hi" end,
+  }
+  api.register_command{
+    name = "hi", description = "greets",
+    execute = function(args) return "hi " .. args end,
+  }
+end
+`
 	if err := os.WriteFile(path, []byte(src), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -36,7 +42,7 @@ end`
 		t.Fatalf("agent_start handlers = %d, want 1", got)
 	}
 
-	// Result round trip: the JSON answer becomes a typed ToolCallResult.
+	// Result round trip: the Lua table answer becomes a typed ToolCallResult.
 	hf := ext.Handlers[ToolCall][0]
 	res := hf(ToolCallEvent{ToolName: "shell"}, Context{})
 	tr, ok := res.(ToolCallResult)
@@ -47,6 +53,16 @@ end`
 		t.Fatalf("tool_call(read) result = %#v, want nil", res)
 	}
 
+	// Tools and commands land in the same registries as Go extensions.
+	if len(ext.Tools) != 1 || ext.Tools[0].Name != "greeter" {
+		t.Fatalf("tools = %#v, want [greeter]", ext.Tools)
+	}
+	if out, err := ext.Tools[0].Execute("{}"); err != nil || out != "tool hi" {
+		t.Fatalf("tool greeter = %q, %v", out, err)
+	}
+	if len(ext.Commands) != 1 {
+		t.Fatalf("commands = %d, want 1", len(ext.Commands))
+	}
 	cmd, err := ext.Commands[0].Execute("ken", Context{})
 	if err != nil || cmd != "hi ken" {
 		t.Fatalf("command hi = %q, %v; want %q, nil", cmd, err, "hi ken")
@@ -76,8 +92,8 @@ func TestNativeExtension_Wasm(t *testing.T) {
 	if !ok || !tr.Block || tr.Reason != "blocked by wasm" {
 		t.Fatalf("tool_call result = %#v, want blocked", tr)
 	}
-	if ext.Commands[0].Name != "ping" {
-		t.Fatalf("command = %q, want ping", ext.Commands[0].Name)
+	if len(ext.Commands) != 1 || ext.Commands[0].Name != "ping" {
+		t.Fatalf("commands = %#v, want [ping]", ext.Commands)
 	}
 	out, err := ext.Commands[0].Execute("x", Context{})
 	if err != nil || out != "pong" {
@@ -85,14 +101,14 @@ func TestNativeExtension_Wasm(t *testing.T) {
 	}
 }
 
-// TestNativeExtension_MissingHandler checks the load-failure path.
-func TestNativeExtension_MissingHandler(t *testing.T) {
+// TestNativeExtension_MissingEntry checks the load-failure path.
+func TestNativeExtension_MissingEntry(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "empty.lua")
 	if err := os.WriteFile(path, []byte(`x = 1`), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := loadSingleExtension(path); err == nil {
-		t.Fatal("want error for script without kit_handle")
+		t.Fatal("want error for script without Init(api)")
 	}
 }
