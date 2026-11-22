@@ -115,7 +115,7 @@ func TestNativeExtension_RtkTool(t *testing.T) {
 	if len(ext.Tools) != 1 || ext.Tools[0].Name != "rtk" {
 		t.Fatalf("tools = %#v", ext.Tools)
 	}
-	out, err := ext.Tools[0].Execute(`{"args":"git status -s` + `"}`)
+	out, err := ext.Tools[0].Execute(`{"args":"git log -1 --oneline"}`)
 	if err != nil {
 		t.Fatalf("rtk execute: %v", err)
 	}
