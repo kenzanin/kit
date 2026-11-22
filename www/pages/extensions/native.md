@@ -62,6 +62,13 @@ Host environment (`kit` table):
 The full Lua standard library is available, matching the trust level of Go
 extensions.
 
+> **Numbers are floats.** The Lua runtime is 5.1-compatible: there is no
+> integer type, all numbers are float64. Integer division must use `//`, and
+> very large integers (above 2^53) lose precision — none of the event
+> fields need that today, but keep it in mind for IDs you generate yourself.
+> Integer-typed Lua (5.3+) arrives with a future runtime swap; see
+> `openspec/changes` for the recorded decision.
+
 ## Wasm
 
 Guest exports:
