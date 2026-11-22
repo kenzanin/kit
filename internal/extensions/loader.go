@@ -169,7 +169,7 @@ func appendExplicitExtensionPaths(ps *pathSet, extraPaths []string) []string {
 			for _, found := range findExtensionsInDir(p) {
 				ps.add(found)
 			}
-		} else if strings.HasSuffix(p, ".go") {
+		} else if hasExtSuffix(p) {
 			ps.add(p)
 		}
 	}
@@ -193,11 +193,10 @@ func findExtensionsInDir(dir string) []string {
 
 	for _, entry := range entries {
 		full := filepath.Join(dir, entry.Name())
-		if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".go") && !strings.HasSuffix(entry.Name(), "_test.go") {
+		if !entry.IsDir() && hasExtSuffix(entry.Name()) && !strings.HasSuffix(entry.Name(), "_test.go") {
 			results = append(results, full)
 		} else if entry.IsDir() {
-			main := filepath.Join(full, "main.go")
-			if _, err := os.Stat(main); err == nil {
+			if main := extEntryFile(full); main != "" {
 				results = append(results, main)
 			}
 		}
@@ -220,6 +219,24 @@ func findExtensionsInRepo(repoPath string) []string {
 		results = append(results, candidate.absPath)
 	}
 	return results
+}
+
+// hasExtSuffix reports whether name looks like a loadable extension
+// (Go, Lua or Wasm).
+func hasExtSuffix(name string) bool {
+	return strings.HasSuffix(name, ".go") || strings.HasSuffix(name, ".lua") || strings.HasSuffix(name, ".wasm")
+}
+
+// extEntryFile returns the single-file entry point of an extension directory
+// (main.go, main.lua or main.wasm, first match), or empty string.
+func extEntryFile(dir string) string {
+	for _, name := range []string{"main.go", "main.lua", "main.wasm"} {
+		p := filepath.Join(dir, name)
+		if _, err := os.Stat(p); err == nil {
+			return p
+		}
+	}
+	return ""
 }
 
 // Each git package is stored at <gitRoot>/<host>/<owner>/<repo>/ and can contain
@@ -435,6 +452,13 @@ func loadSingleExtension(path string) (*LoadedExtension, error) {
 // returns its Init function without calling it. It shares no mutable state
 // with other interpreters, so several files may be compiled concurrently.
 func compileExtension(path string) (func(API), error) {
+	switch {
+	case strings.HasSuffix(path, ".lua"):
+		return compileNative(path, newLuaHost)
+	case strings.HasSuffix(path, ".wasm"):
+		return compileNative(path, newWasmHost)
+	}
+
 	// Create a fresh interpreter. Yaegi runs extensions in restricted mode,
 	// where os.Getenv/os.LookupEnv/os.Environ read from a virtualized
 	// environment rather than the real one. Seed it with the process

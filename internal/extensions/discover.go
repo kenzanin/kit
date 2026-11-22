@@ -59,12 +59,11 @@ func walkExtensionCandidates(root string) ([]extensionCandidate, error) {
 			}
 
 			if !isExtDir {
-				mainPath := filepath.Join(path, "main.go")
-				if _, err := os.Stat(mainPath); err == nil {
+				if mainPath := extEntryFile(path); mainPath != "" {
 					if relPath == base { // Top-level directory
 						if !multiFileDirs[relPath] {
 							multiFileDirs[relPath] = true
-							results = append(results, extensionCandidate{absPath: mainPath, relPath: relPath + "/main.go", isMain: true})
+							results = append(results, extensionCandidate{absPath: mainPath, relPath: relPath + "/" + filepath.Base(mainPath), isMain: true})
 						}
 						return filepath.SkipDir
 					}
@@ -72,12 +71,11 @@ func walkExtensionCandidates(root string) ([]extensionCandidate, error) {
 				return filepath.SkipDir
 			}
 
-			// Check for main.go
-			mainPath := filepath.Join(path, "main.go")
-			if _, err := os.Stat(mainPath); err == nil {
+			// Check for a main entry point
+			if mainPath := extEntryFile(path); mainPath != "" {
 				if !multiFileDirs[relPath] {
 					multiFileDirs[relPath] = true
-					results = append(results, extensionCandidate{absPath: mainPath, relPath: relPath + "/main.go", isMain: true})
+					results = append(results, extensionCandidate{absPath: mainPath, relPath: relPath + "/" + filepath.Base(mainPath), isMain: true})
 				}
 				return filepath.SkipDir
 			}
@@ -86,7 +84,7 @@ func walkExtensionCandidates(root string) ([]extensionCandidate, error) {
 		}
 
 		// It's a file
-		if !strings.HasSuffix(info.Name(), ".go") || strings.HasSuffix(info.Name(), "_test.go") {
+		if !hasExtSuffix(info.Name()) || strings.HasSuffix(info.Name(), "_test.go") {
 			return nil
 		}
 
