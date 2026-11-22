@@ -91,10 +91,10 @@ func compileLua(path string) (initFn func(API), closeFn func(), err error) {
 			log.Warn("native extension init failed", "ext", filepath.Base(path), "err", err)
 		}
 	}
-	// ponytail: no explicit close path exists on LoadedExtension yet; the
-	// state is released on process exit. Wire closeFn into reload when the
-	// watcher grows a teardown (task: reload isolation).
-	return initFn, func() { L.Close() }, nil
+	// ponytail: no explicit close hook exists on LoadedExtension yet. The
+	// gopher-lua state is pure Go — dropping the extension lets GC reclaim
+	// it; an explicit close belongs to the runner's future ext teardown.
+	return initFn, func() { h.close() }, nil
 }
 
 func (h *luaHost) inFlight() *Context {

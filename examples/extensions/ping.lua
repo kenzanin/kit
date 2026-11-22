@@ -2,18 +2,14 @@
 -- on agent start. Load with `kit -e ping.lua` or drop it in
 -- ~/.config/kit/extensions/.
 --
--- The contract is one function: kit_handle(event, payload). "describe" is
--- probed once at load; result-events answer with JSON; commands answer with
--- plain text. See internal/extensions/native.go.
-function kit_handle(event, payload)
-  if event == "describe" then
-    return '{"commands":[{"name":"ping","description":"reply pong"}],"events":["agent_start"]}'
-  end
-  if event == "command:ping" then
-    return "pong " .. payload
-  end
-  if event == "agent_start" then
+-- Native plugins register imperatively, exactly like Go ones: define
+-- Init(api); see internal/extensions/luahost.go and docs.
+function Init(api)
+  api.on("agent_start", function(ev)
     kit.log("agent started")
-  end
-  return ""
+  end)
+  api.register_command{
+    name = "ping", description = "reply pong",
+    execute = function(args) return "pong " .. (args or "") end,
+  }
 end

@@ -5,6 +5,7 @@
 (module
   (import "kit" "on" (func $on (param i32 i32 i64)))
   (import "kit" "register_command" (func $regcmd (param i32 i32 i64)))
+  (import "kit" "log" (func $log (param i32 i32)))
   (memory (export "memory") 1)
   (global $p (mut i32) (i32.const 8192))
   (global $rlen (mut i32) (i32.const 0))
@@ -14,6 +15,7 @@
   (data (i32.const 512) "{\"Block\":true,\"Reason\":\"blocked by wasm\"}")
   (data (i32.const 768) "pong")
   (data (i32.const 896) "agent_start")
+  (data (i32.const 960) "ext tick")
 
   (func $ret (param $ptr i32) (param $n i32) (result i32)
     local.get $n
@@ -40,7 +42,9 @@
 
   (func (export "kit_dispatch") (param $id i64) (param $ptr i32) (param $n i32) (result i32)
     (if (i64.eq (local.get $id) (i64.const 1))
-      (then (return (call $ret (i32.const 512) (i32.const 41)))))
+      (then
+        (call $log (i32.const 960) (i32.const 8))
+        (return (call $ret (i32.const 512) (i32.const 41)))))
     (if (i64.eq (local.get $id) (i64.const 2))
       (then (return (call $ret (i32.const 768) (i32.const 4)))))
     (i32.const 0))

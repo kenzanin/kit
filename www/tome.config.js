@@ -32,6 +32,7 @@ export default {
       pages: [
         "extensions/overview",
         "extensions/capabilities",
+        "extensions/native",
         "extensions/examples",
         "extensions/loading",
         "extensions/testing",

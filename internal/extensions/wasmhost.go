@@ -112,10 +112,9 @@ func compileWasm(path string) (initFn func(API), closeFn func(), err error) {
 			log.Warn("native extension init failed", "ext", h.path, "err", err)
 		}
 	}
-	return initFn, func() {
-		_ = mod.Close(context.Background())
-		_ = rt.Close(context.Background())
-	}, nil
+	// ponytail: no explicit close hook on LoadedExtension yet; wazero
+	// reclaims compiled state with GC. closeFn stays for a future teardown.
+	return initFn, func() { h.close() }, nil
 }
 
 // -- guest registration imports ----------------------------------------------
