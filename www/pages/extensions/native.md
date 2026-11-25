@@ -18,7 +18,7 @@ from a single entry point.
 | Tools | `api.RegisterTool(...)` | `api.register_tool{...}` | `kit.register_tool` import |
 | Commands | `api.RegisterCommand(...)` | `api.register_command{...}` | `kit.register_command` |
 | Options / shortcuts / renderers | yes | yes | yes |
-| Runtime | yaegi (Go) | gopher-lua | wazero |
+| Runtime | yaegi (Go) | modernc.org/lua (Lua 5.5) | wazero |
 | cgo | none | none | none |
 
 Every `On*` method on the extension API has a native binding; a parity test
@@ -58,16 +58,19 @@ Host environment (`kit` table):
 | `kit.print(msg)` / `print_info` / `print_error` | user-facing output through the Context print surface |
 | `kit.print_block(msg)` | styled block output |
 | `kit.ctx()` | table of the in-flight Context scalars (session id, cwd, model, interactive) |
+| `kit.json(v)` | encode a table/scalar to a JSON string; decode when given a string |
 
 The full Lua standard library is available, matching the trust level of Go
 extensions.
 
-> **Numbers are floats.** The Lua runtime is 5.1-compatible: there is no
-> integer type, all numbers are float64. Integer division must use `//`, and
-> very large integers (above 2^53) lose precision — none of the event
-> fields need that today, but keep it in mind for IDs you generate yourself.
-> Integer-typed Lua (5.3+) arrives with a future runtime swap; see
-> `openspec/changes` for the recorded decision.
+Lua 5.5 semantics, so `int64` ids survive the trip: `1 << 60` is exact,
+`math.type(n)` is `"integer"`, and `//`, `&`, `|`, `~`, `<<`, `>>`,
+`utf8.*` and `string.pack` all work. JSON integers are decoded with their
+numeric type preserved (`9007199254740993` stays itself).
+
+> Lua 5.5 renamed a few 5.1 functions: `unpack` → `table.unpack`,
+> `loadstring` → `load`, and `goto` is a keyword. Plugin code written for
+> 5.1 keeps working unless it uses one of those.
 
 ## Wasm
 

@@ -36,12 +36,12 @@ require (
 	github.com/tmc/go-iroh v0.3.0
 	github.com/traefik/yaegi v0.16.3
 	github.com/yuin/goldmark v1.8.7
-	github.com/yuin/gopher-lua v1.1.2
 	golang.org/x/image v0.48.0
 	golang.org/x/sys v0.50.0
 	golang.org/x/term v0.48.0
 	golang.org/x/text v0.44.0
 	gopkg.in/yaml.v3 v3.0.1
+	modernc.org/lua v0.2.0
 )
 
 require (
@@ -115,10 +115,12 @@ require (
 	github.com/muesli/mango-pflag v0.2.0 // indirect
 	github.com/muesli/roff v0.1.0 // indirect
 	github.com/muesli/termenv v0.16.0 // indirect
+	github.com/ncruces/go-strftime v1.1.0 // indirect
 	github.com/pb33f/go-yaml v0.2.0 // indirect
 	github.com/pb33f/ordered-map/v2 v2.3.2 // indirect
 	github.com/pelletier/go-toml/v2 v2.4.3 // indirect
 	github.com/quic-go/quic-go v0.65.0 // indirect
+	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/rivo/uniseg v0.4.8-0.20261110175422-3a370411ca06 // indirect
 	github.com/sagikazarmark/locafero v0.12.0 // indirect
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.3 // indirect
@@ -158,4 +160,7 @@ require (
 	google.golang.org/protobuf v1.36.12 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	lukechampine.com/blake3 v1.5.1 // indirect
+	modernc.org/libc v1.82.13 // indirect
+	modernc.org/mathutil v1.7.1 // indirect
+	modernc.org/memory v1.13.0 // indirect
 )

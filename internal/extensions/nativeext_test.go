@@ -104,6 +104,61 @@ func TestNativeExtension_Wasm(t *testing.T) {
 
 // TestNativeExtension_RtkTool: the examples rtk.lua wrapper — full pipe
 // Lua tool -> io.popen -> rtk binary. Skipped where rtk is not installed.
+// TestNativeExtension_Lua55 pins the reasons for the 5.5 runtime: exact
+// 64-bit integers, bitwise ops, integer division and the kit.json round trip.
+func TestNativeExtension_Lua55(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "int55.lua")
+	src := `
+function Init(api)
+  api.register_tool{
+    name = "big", description = "5.5 integers",
+    parameters = '{"type":"object"}',
+    execute = function(input)
+      local n = 1 << 60
+      return tostring(n) .. "|" .. tostring(n + 1) .. "|" .. tostring(7 // 2)
+        .. "|" .. tostring(0xff & 0x0f) .. "|" .. math.type(n)
+    end,
+  }
+  api.register_command{
+    name = "bump", description = "json round trip",
+    execute = function(args)
+      local v = args
+      if type(v) == "string" then v = kit.json(v) end
+      v.n = v.n + 1
+      return kit.json(v)
+    end,
+  }
+end
+`
+	if err := os.WriteFile(path, []byte(src), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	ext, err := loadSingleExtension(path)
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+
+	out, err := ext.Tools[0].Execute(`{}`)
+	if err != nil {
+		t.Fatalf("execute: %v", err)
+	}
+	want := "1152921504606846976|1152921504606846977|3|15|integer"
+	if out != want {
+		t.Fatalf("execute = %q, want %q", out, want)
+	}
+
+	// 9007199254740993 is not representable as float64; a 5.1 runtime
+	// returns ...992 here.
+	got, err := ext.Commands[0].Execute(`{"n":9007199254740993}`, Context{})
+	if err != nil {
+		t.Fatalf("command: %v", err)
+	}
+	if want := `{"n":9007199254740994}`; got != want {
+		t.Fatalf("command = %q, want %q", got, want)
+	}
+}
+
 func TestNativeExtension_RtkTool(t *testing.T) {
 	if _, err := exec.LookPath("rtk"); err != nil {
 		t.Skip("rtk not installed")
